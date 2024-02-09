@@ -1,0 +1,42 @@
+import os
+
+configfile: "config.yaml"
+
+# retrieve the parameters form the configuration file
+BASEPATH = config['base_path']
+FASTSURFER_PATH = config['fastsurfer_path']
+FILE_PATH = config['series_path']
+
+# read the list of paths
+
+with open(FILE_PATH, 'r') as fp:
+    series = fp.read().split('\n')[:-1]
+
+patient_ids = list(map(lambda x: os.path.join(*x.split('/')[:-1]), series)) 
+
+
+
+rule all:
+    input:
+        vl_ = expand(os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'aseg.stats'), patient=patients_ids, serie=series),
+        wm_ = expand(os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'wmparc.DKTatlas.mapped.stats'), patient=patients_ids, serie=series),
+        rh_ = expand(os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'lh.aparc.DKTatlas.mapped.stats'), patient=patients_ids, serie=series),
+        lh_ = expand(os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'rh.aparc.DKTatlas.mapped.stats'), patient=patients_ids, serie=series)
+
+
+rule run_fastsurfer:
+    input:
+        in_ = os.path.join(BASEPATH, "{serie}", 't1.nii')
+    output:
+        vl_ = os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'aseg.stats'),
+        wm_ = os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'wmparc.DKTatlas.mapped.stats'),
+        rh_ = os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'lh.aparc.DKTatlas.mapped.stats'),
+        lh_ = os.path.join(BASEPATH, "{patient}", 'fastsurfer', 'stats', 'rh.aparc.DKTatlas.mapped.stats')
+    params:
+        sd_ = "{patient}",
+        fast_path = FASTSURFER_PATH
+    conda:
+        config['fastsurfer_environment_path']
+        
+    shell:
+        "{params.fast_path}/run_fastsurfer.sh --t1 '{input.in_}' --sd '{params.sd_}' --sid proc"
